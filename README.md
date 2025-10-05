@@ -1,23 +1,25 @@
-# sigil
-Solana Trading Platform
-# **Comprehensive Technical Specification: Solana Meme Coin Trading & Community Platform with Native Token Economy**  
-**Version 1.0**  
-*For Engineering, Product, and DevOps Teams*
+
+
+# **Comprehensive Technical Specification: Sigil — Solana Meme Coin Trading & Community Platform with AI Agents & Native Token Economy**  
+**Version 1.1**  
+*For Product Team*
 
 ---
 
 ## **1. Executive Summary**
 
-This document defines a full-stack platform that unifies:
-- **Real-time Solana meme coin monitoring and trading** (manual + automated)
-- **Creator-driven community hubs** with monetization
-- **A native SPL utility token (`$SIGIL`)** used exclusively for all subscriptions
+**Sigil** is an intelligent, community-driven platform for Solana meme coin trading that unifies:
+- **Real-time on-chain monitoring** of new tokens (pump.fun → Raydium)
+- **Hybrid trading**: manual execution + autonomous AI agents
+- **Creator monetization**: influencers, devs, and news groups offer tiered content
+- **Native utility token**: **`$SIGIL`** powers all subscriptions and rewards
+- **AI co-pilots**: powered by **Qwen, OpenAI, and Gemini APIs** for signal synthesis, risk analysis, and trade rationale
 
-The system replaces traditional trading fees with a **tokenized subscription model**, creating a closed-loop, deflationary economy aligned with Solana’s speed and composability.
+By using **production-grade cloud LLMs**, Sigil avoids the cost and complexity of training/maintaining custom models while delivering high-quality, explainable AI insights.
 
 ---
 
-## **2. System Architecture**
+## **2. System Architecture (Updated)**
 
 ### **2.1. High-Level Diagram**
 ```
@@ -29,29 +31,26 @@ The system replaces traditional trading fees with a **tokenized subscription mod
          │                             │                             │
 ┌────────▼─────────┐        ┌──────────▼──────────┐       ┌──────────▼──────────┐
 │ Trading Engine   │        │ Community Service   │       │ Auth & User Service │
-│ - DEX Integration│        │ - Feeds             │       │ - Wallet Login      │
-│ - Auto-Sell      │        │ - Subscriptions     │       │ - Profile Mgmt      │
-│ - Sniper Logic   │        │ - Token-Gating      │       └─────────────────────┘
-└────────┬─────────┘        └──────────┬──────────┘
+└────────┬─────────┘        └──────────┬──────────┘       └─────────────────────┘
          │                             │
          └──────────────┬──────────────┘
                         │
-               ┌────────▼─────────┐
-               │  Token Service   │ ←─── $SIGIL Economy
-               │ - Balance Mgmt   │
-               │ - Payments       │
-               │ - Rewards        │
-               └────────┬─────────┘
-                        │
-               ┌────────▼─────────┐
-               │  Data Layer      │
-               │ - PostgreSQL     │
-               │ - Redis          │
-               │ - S3 (Media)     │
-               └────────┬─────────┘
-                        │
-               ┌────────▼─────────┐
-               │  Blockchain      │
+               ┌────────▼─────────┐     ┌──────────────────────┐
+               │  Token Service   │<--->│   AI Agent Service   │
+               │ - $SIGIL Economy │     │ - Signal Generation  │
+               └────────┬─────────┘     │ - LLM Orchestration  │
+                        │               │ - Social + On-Chain  │
+                        ▼               └──────────┬───────────┘
+               ┌────────▼─────────┐                │
+               │  Data Layer      │<───────────────┼───[ Qwen / OpenAI / Gemini ]
+               │ - PostgreSQL     │                │
+               │ - Redis          │                │
+               │ - Vector DB      │                │
+               │ - S3 (Media)     │                │
+               └────────┬─────────┘                │
+                        │                          │
+               ┌────────▼─────────┐               │
+               │  Blockchain      │<──────────────┘
                │ - Solana RPC     │
                │ - Helius         │
                │ - Jupiter API    │
@@ -61,290 +60,136 @@ The system replaces traditional trading fees with a **tokenized subscription mod
 
 ---
 
-## **3. Core Services**
+## **3. AI Agent Service (Revised)**
 
-### **3.1. Trading Engine**
-**Purpose**: Low-latency meme coin discovery and execution.
+### **3.1. Philosophy**
+- **No fine-tuned models**. Use **best-in-class cloud LLMs** via API.
+- **Multi-provider fallback**: If OpenAI is down, use Qwen or Gemini.
+- **Cost-aware routing**: Use cheaper models (e.g., Qwen-Max) for simple tasks, GPT-4o/Gemini-1.5 for complex reasoning.
 
-**Tech Stack**:
-- **Language**: Rust (sniper logic), TypeScript (orchestration)
-- **Libraries**: `@solana/web3.js`, `@jup-ag/api`, `helius-sdk`
-- **Features**:
-  - WebSocket monitoring of pump.fun → Raydium migrations
-  - Jito bundle support for sub-100ms execution
-  - Auto-sell with trailing stop-loss
-  - Scam detection (rugcheck.xyz integration)
+### **3.2. Supported LLM Providers**
+| Provider   | Model Used          | Use Case                          | Why |
+|-----------|---------------------|-----------------------------------|-----|
+| **OpenAI** | `gpt-4o`            | High-stakes trade rationale, risk analysis | Best reasoning, low latency |
+| **Google** | `gemini-1.5-flash`  | Social sentiment summarization    | Fast, cheap, strong at text |
+| **Alibaba**| `qwen-max`          | General signal synthesis, fallback | Cost-effective, good Chinese/English support |
 
-**Key Endpoints**:
+> ✅ All providers support **structured JSON output** → easy parsing.
+
+### **3.3. Agent Workflow**
+1. **Data Ingestion**:
+   - On-chain: New token mint, LP add, whale buy (via Helius)
+   - Social: X posts, Telegram public channels (via official APIs or RSS)
+2. **Event Enrichment**:
+   - Tag with metadata (e.g., “dog-themed”, “dev wallet locked”)
+   - Store embeddings in **Qdrant** for similarity search
+3. **LLM Prompting**:
+   ```text
+   You are SigilAI, a Solana meme coin analyst.
+   Analyze this event and decide if it's a high-confidence buy signal.
+
+   Token: $WOOF
+   - 50 new holders in last 2 min
+   - LP locked for 30 days
+   - Dev wallet burned
+   - X mentions: +200% in 1 hour
+   - No honeypot flags
+
+   Respond in JSON: { "action": "BUY"|"HOLD"|"AVOID", "confidence": 0.0-1.0, "rationale": "..." }
+   ```
+4. **Execution**:
+   - If confidence > user threshold → send to Trading Engine (with approval if not auto-mode)
+
+### **3.4. Tech Stack**
+- **Orchestrator**: Python + FastAPI
+- **LLM Router**: LangChain or LiteLLM (for multi-provider support)
+- **Caching**: Redis (cache LLM responses for identical events)
+- **Cost Control**: 
+  - Max tokens per call
+  - Daily budget per user
+  - Fallback to cheaper model if GPT-4o quota exceeded
+
+### **3.5. Key Endpoints**
 ```ts
-POST /trade/buy
+GET /ai/feed
+// Returns AI-generated signals with rationale from LLM
+
+POST /ai/analyze
 {
-  wallet: string,        // User's public key
-  tokenMint: string,     // SPL token address
-  amountSol: number,
-  slippage: number,      // e.g., 0.1 = 10%
-  dex: "raydium" | "jupiter"
+  tokenMint: "EKp...xyz",
+  context: { holders: 50, lpLocked: true, ... }
 }
-
-POST /trade/sell
-{
-  wallet: string,
-  tokenMint: string,
-  percentage: number     // e.g., 1.0 = 100%
-}
+// Returns LLM analysis in structured JSON
 ```
+
+### **3.6. Safety & Explainability**
+- **All outputs are JSON-enforced** → no hallucinated actions
+- **Rationale always included** → user can audit AI logic
+- **No autonomous execution without explicit opt-in**
+- **Provider API keys stored in AWS Secrets Manager / HashiCorp Vault**
 
 ---
 
-### **3.2. Community Service**
-**Purpose**: Creator profiles, community feeds, and engagement.
-
-**Data Models**:
-
-#### **CreatorProfile**
-```prisma
-model CreatorProfile {
-  id            String    @id @default(uuid())
-  userId        String    @unique
-  displayName   String
-  bio           String?
-  verified      Boolean   @default(false)
-  socialLinks   Json?     // { twitter: "...", telegram: "..." }
-  walletAddress String?   // For on-chain verification
-  subscriptionTiers SubscriptionTier[]
-}
-```
-
-#### **SubscriptionTier**
-```prisma
-model SubscriptionTier {
-  id          String   @id @default(uuid())
-  creatorId   String
-  name        String   // "Alpha Tier", "Free"
-  priceSIGIL  Int      // e.g., 1000 = $10 at 1 $SIGIL = $0.01
-  gatedToken  String?  // SPL mint for token-gating
-  gatedAmount Int?     // min token balance required
-  perks       Json     // ["early_access", "copy_trade"]
-}
-```
-
-#### **Post**
-```prisma
-model Post {
-  id          String   @id @default(uuid())
-  creatorId   String
-  content     String
-  tradeData   Json?    // { tokenMint, amountSol, txHash }
-  visibility  String   // "public" | "subscribers" | "tier:abc123"
-  createdAt   DateTime @default(now())
-}
-```
-
-**Key Endpoints**:
-```ts
-POST /community/posts
-GET /community/feed?limit=20&cursor=...
-POST /community/subscribe
-```
-
----
-
-### **3.3. Token Service** *(New)*
-**Purpose**: Manage `$SIGIL` economy.
-
-**Responsibilities**:
-- Track user $SIGIL balances
-- Process subscription payments
-- Distribute creator rewards
-- Handle buyback & burn
-
-**Data Model**:
-```prisma
-model Subscription {
-  id           String   @id @default(uuid())
-  userId       String
-  tierId       String
-  tokenAmount  Int      // $SIGIL amount (e.g., 1000)
-  startDate    DateTime
-  endDate      DateTime
-  status       String   // "active", "expired"
-}
-```
-
-**Key Endpoints**:
-```ts
-GET /token/balance?wallet=...
-POST /token/transfer // Internal only
-POST /subscriptions // Purchase flow
-```
-
----
-
-### **3.4. Auth & User Service**
-- **Wallet Login**: Solana Wallet Adapter (Phantom, Solflare)
-- **Session**: JWT in HTTP-only cookies
-- **Profile**: Multi-wallet linking, risk preferences
-
----
-
-## **4. Native Token: `$SIGIL`**
-
-### **4.1. Token Specifications**
-| Property        | Value                                  |
-|-----------------|----------------------------------------|
-| **Name**        | Sigil Token                           |
-| **Symbol**      | `$SIGIL`                               |
-| **Decimals**    | 6                                      |
-| **Total Supply**| 1,000,000,000                          |
-| **Mint Authority** | **Revoked** at launch               |
-| **Freeze Authority** | **Revoked**                        |
-
-### **4.2. Initial Distribution**
-| Allocation        | %     | Amount       | Use Case                     |
-|-------------------|-------|--------------|------------------------------|
-| Platform Treasury | 40%   | 400,000,000  | Subscriptions, rewards, dev  |
-| Creator Rewards   | 25%   | 250,000,000  | Payouts to top creators      |
-| User Airdrop      | 20%   | 200,000,000  | Free claims at launch        |
-| Team              | 10%   | 100,000,000  | 4-year vesting               |
-| Liquidity         | 5%    | 50,000,000   | Raydium pool (with SOL)      |
-
-### **4.3. Subscription Pricing (Fixed Rate)**
-| Tier    | USD Value | $SIGIL Cost |
-|---------|-----------|-------------|
-| Free    | $0        | 0           |
-| Pro     | $10       | 1,000       |
-| Elite   | $50       | 5,000       |
-
-> **Rate**: 1 $SIGIL = $0.01 (adjusted quarterly via DAO).
-
----
-
-## **5. Blockchain Integrations**
-
-### **5.1. Real-Time Monitoring**
-- **Provider**: Helius WebSockets
-- **Programs Tracked**:
-  - `Tokenkeg` (SPL Token Program)
-  - `675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8` (pump.fun)
-
-### **5.2. DEX Integration**
-| DEX       | Method                     |
-|-----------|----------------------------|
-| Jupiter   | REST API v6 (`/quote`)     |
-| Raydium   | SDK + CPI                  |
-| Pump.fun  | IDL + account subscription |
-
-### **5.3. $SIGIL Token Flow**
-1. User holds $SIGIL in their wallet
-2. On subscription:  
-   - Frontend requests transfer approval
-   - User signs SPL transfer to **Treasury Wallet**
-   - Backend confirms → activates subscription
-
----
-
-## **6. Infrastructure**
+## **4. Updated Infrastructure**
 
 | Component          | Technology                          |
 |--------------------|-------------------------------------|
-| **Frontend**       | Next.js 14, Tailwind, Zustand       |
-| **Backend**        | NestJS (TS) + Rust binaries         |
-| **Database**       | PostgreSQL (Prisma)                 |
-| **Cache**          | Redis (feeds, balances)             |
-| **Storage**        | AWS S3                              |
-| **RPC**            | Helius (Primary), QuickNode (Backup)|
-| **Realtime**       | Socket.io                           |
-| **Deployment**     | Docker + Kubernetes (EKS)           |
-| **Monitoring**     | Datadog + Prometheus                |
+| **AI Runtime**     | Python 3.11 + FastAPI + LiteLLM     |
+| **LLM Providers**  | OpenAI, Google AI Studio, Alibaba Cloud |
+| **Vector DB**      | Qdrant (for event similarity)       |
+| **Secrets**        | AWS Secrets Manager                 |
+| **Monitoring**     | Log LLM latency, cost, error rate per provider |
 
 ---
 
-## **7. Security**
+## **5. Cost & Performance Considerations**
 
-- **No private keys stored**: All signing client-side
-- **Mint authority revoked**: Immutable token supply
-- **Rate limiting**: 100 req/min per IP
-- **Transaction simulation**: Prevents malicious approvals
-- **Idempotency keys**: Avoid duplicate subscription charges
+| Task                     | Recommended Model     | Avg Cost / Call |
+|--------------------------|-----------------------|-----------------|
+| Social sentiment summary | `gemini-1.5-flash`    | $0.0001         |
+| Trade rationale          | `gpt-4o`              | $0.005          |
+| Fallback analysis        | `qwen-max`            | $0.002          |
+
+> 💡 **Optimization**: Cache identical prompts (e.g., same token event) for 5 minutes → reduce cost by ~40%.
 
 ---
 
-## **8. APIs (Key Endpoints)**
+## **6. Security & Compliance**
 
-### **8.1. Trade Execution**
-```yaml
-POST /trade/buy
-Request:
-  wallet: "9fX...abc"
-  tokenMint: "EKp...xyz"
-  amountSol: 5.0
-  slippage: 0.1
+- **No user data sent to LLMs** without anonymization
+- **Social data**: Only public posts; no private/user-specific data in prompts
+- **Audit logs**: All LLM calls logged with user ID, token, and provider
+- **GDPR/CCPA**: LLM providers must be compliant (OpenAI/Gemini/Qwen all offer enterprise agreements)
+
+---
+
+## **7. Appendix**
+
+### **A. Example LLM Prompt (OpenAI)**
+```python
+response = openai.chat.completions.create(
+  model="gpt-4o",
+  response_format={ "type": "json_object" },
+  messages=[
+    {"role": "system", "content": "You are SigilAI..."},
+    {"role": "user", "content": "Token: $MOON\n- 100 new holders\n- LP: 50 SOL\n- Dev wallet: renounced..."}
+  ]
+)
 ```
 
-### **8.2. Subscription Management**
-```yaml
-POST /subscriptions
-Request:
-  tierId: "tier_abc123"
-  wallet: "9fX...abc"
-
-Response:
-  { id: "sub_xyz", endDate: "2025-06-01T00:00:00Z" }
-```
-
-### **8.3. Token Balance**
-```yaml
-GET /token/balance?wallet=9fX...abc
-Response:
-  { balance: 2500, decimals: 6 }
+### **B. Multi-Provider Fallback Logic**
+```python
+def get_llm_analysis(context):
+    try:
+        return openai_analyze(context)
+    except RateLimitError:
+        try:
+            return gemini_analyze(context)
+        except:
+            return qwen_analyze(context)  # Final fallback
 ```
 
 ---
 
-## **9. Deployment Roadmap**
-
-| Phase | Milestones |
-|------|-----------|
-| **1. Core** | Deploy $SIGIL, build Trading Engine, basic UI |
-| **2. Community** | Creator profiles, free posts, follower system |
-| **3. Monetization** | $SIGIL subscriptions, creator payouts |
-| **4. Scale** | Mobile app, DAO governance, CEX listings |
-
----
-
-## **10. Appendix**
-
-### **A. $SIGIL Mint Deployment (Rust Snippet)**
-```rust
-// Revoke mint authority by setting to system_program
-invoke(
-  &initialize_mint(
-    &spl_token::ID,
-    &mint_pubkey,
-    &system_program::ID, // ← Revoked
-    None,                // ← No freeze auth
-    6,
-  )?,
-  &[mint_account, rent_sysvar],
-)?;
-```
-
-### **B. Subscription Payment Flow**
-1. User selects tier → frontend calculates $SIGIL cost
-2. Backend checks balance via `getTokenAccountBalance`
-3. If sufficient, prepare SPL transfer instruction
-4. User signs → tx sent to network
-5. On confirmation, activate subscription in DB
-
-### **C. Treasury Wallet**
-- Dedicated wallet for all $SIGIL revenue
-- Funds used for:  
-  - 85% → Creator payouts  
-  - 15% → Platform (dev + buyback)
-
----
-
-**Document Owner**: Sigil Platform  
+**Document Owner**: Sigil Team  
 **Last Updated**: Oct 2025  
-
-This spec provides a complete, production-ready blueprint for a **tokenized Solana meme coin platform** that merges trading, community, and economics into one cohesive product. The native `$SIGIL` token eliminates friction, aligns incentives, and creates a defensible moat through network effects.

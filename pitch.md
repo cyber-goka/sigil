@@ -1,4 +1,4 @@
-# **Sigil — Investor Pitch **  
+# Sigil — Investor Pitch  
 *The AI-Powered Nervous System for Solana Meme Coin Culture*
 
 ---
